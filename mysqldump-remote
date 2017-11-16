@@ -1,0 +1,187 @@
+#!/bin/bash
+
+# Script directory
+DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
+
+# Script name
+scriptName=`basename $0`
+
+# Command
+CMD=""
+
+# Environment variables file (.env format)
+ENV=""
+
+# MySQL Host
+MYSQL_HOST="localhost"
+
+# Output directory
+OUTPUT="./"
+
+# Output file prefix
+PREFIX=""
+
+# Output file suffix
+SUFFIX=""
+
+# File name
+FILENAME=""
+
+# Verbose output
+VERBOSE=0
+
+# SSH Options
+SSH_USER=""
+SSH_HOST=""
+SSH_KEY=""
+SKEY=""
+SSH_PORT=""
+SPRT=""
+SSH_CMD=""
+
+# Exit
+safeExit() {
+  exit
+}
+
+# Help Screen
+help() {
+  echo -n "${scriptName} [OPTIONS] -u=UserName --mysql-host=localhost
+Perform MySQL dump from specified host
+ Options:
+  -u|--mysql-user       Database user name
+  -h|--mysql-host       Database host
+  -p|--mysql-password   Database password
+  -d|--mysql-database   Database name
+  --ssh-user            SSH User
+  --ssh-host            SSH Host
+  --ssh-key             SSH Key
+  -o|--output           Directory to output saved file
+  -e|--env              Environment variables file location (.env format)
+  -f|--file-name        Output file name (disregards prefix and suffix)
+  --prefix              Output file prefix
+  --suffix              Output file suffix
+  -h|--help             Display this help and exit
+  -v|--verbose          Verbose output
+"
+}
+
+# Process Arguments
+while [ "$1" != "" ]; do
+  PARAM=`echo $1 | awk -F= '{print $1}'`
+  VALUE=`echo $1 | awk -F= '{print $2}'`
+  case $PARAM in
+    -h|--help) help; safeExit ;;
+    -u|--mysql-user) MYSQL_USER=$VALUE ;;
+    -h|--mysql-host) MYSQL_HOST=$VALUE ;;
+    -p|--mysql-password) MYSQL_PWD=$VALUE ;;
+    -d|--mysql-database) MYSQL_DB=$VALUE ;;
+    --ssh-user) SSH_USER=$VALUE ;;
+    --ssh-host) SSH_HOST=$VALUE ;;
+    --ssh-port) SSH_PORT=$VALUE ;;
+    --ssh-key) SSH_KEY=$VALUE ;;
+    -o|--output) OUTPUT=$VALUE ;;
+    -e|--env) ENV=$VALUE ;;
+    -f|--file-name) FILENAME=$VALUE ;;
+    --prefix) PREFIX=$VALUE ;;
+    --suffix) SUFFIX=$VALUE ;;
+    -v|--verbose) VERBOSE=1 ;;
+    -vv) VERBOSE=2 ;;
+    *) echo "ERROR: unknown parameter \"$PARAM\""; help; exit 1 ;;
+  esac
+  shift
+done
+
+# Get environment variables
+loadEnv() {
+  if [ ! -z $ENV ]; then
+    export $(egrep -v '^#' $ENV | xargs)
+  fi
+}
+
+# Prompt for variables that were not provided in arguments
+checkVariables() {
+  # SSH Key
+  if [ ! -z $SSH_KEY ]; then
+    SKEY="-i ${SSH_KEY}"
+  fi
+
+  # SSH Port
+  if [ ! -z $SSH_PORT ]; then
+    SPRT=":${SSH_PORT}"
+  fi
+
+  # SSH Verbose
+  SSHV=""
+  if [ $VERBOSE -gt 1 ]; then
+    SSHV="-v"
+  fi
+
+  # SSH Command
+  if [[ ! -z $SSH_USER && ! -z $SSH_HOST ]]; then
+    SSH_CMD="ssh ${SSHV} ${SKEY} ${SSH_USER}@${SSH_HOST}${SPRT}"
+  fi
+
+  # MySQL User
+  if [ -z $MYSQL_USER ]; then
+    echo -n "MySQL User:"
+    read MYSQL_USER
+  fi
+  DBU="-u ${MYSQL_USER}"
+
+  # MySQL Database
+  if [ -z $MYSQL_DB ]; then
+    echo -n "MySQL Database Name:"
+    read MYSQL_DB
+  fi
+
+  # MySQL Host
+  DBH="-h ${MYSQL_HOST}"
+
+  # MySQL Password
+  DBP=""
+  if [ ! -z $MYSQL_PWD ]; then
+    DBP="-p'${MYSQL_PWD/\$/\\$}'"
+  fi
+
+  # Build file name
+  if [ -z $FILENAME ]; then
+    TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+    FILENAME="${PREFIX}${TIMESTAMP/"%s"/${TIME}}${SUFFIX}"
+  fi
+  FILENAME="${FILENAME}"
+
+  # MySQL Dump Verbose
+  DBV=""
+  if [ $VERBOSE -gt 0 ]; then
+    DBV="-v"
+  fi
+}
+
+# Dump database
+dumpDb() {
+  if [ -d $OUTPUT ]; then
+    OUTPUT=${OUTPUT%/}
+
+    # Add SSH
+    if [[ ! -z $SSH_CMD ]]; then
+      CMD="${SSH_CMD}"
+    fi
+
+    # Create command
+    # CMD="${CMD} \"mysqldump ${DBV} ${DBU} ${DBH} ${DBP}$(printf "%s" "\'$DBPV\'") ${MYSQL_DB} | gzip -c\" > ${OUTPUT}/${FILENAME}.sql.gz"
+    CMD="${CMD} \"mysqldump ${DBV} ${DBU} ${DBH} ${DBP} ${MYSQL_DB} | gzip -c\" > ${OUTPUT}/${FILENAME}.sql.gz"
+
+    # Add output
+    echo "${CMD}"
+    eval $CMD
+  else
+    if [ $VERBOSE -gt 0 ]; then
+      echo "The output directory \"${OUTPUT}\" does not exist"
+    fi
+  fi
+}
+
+loadEnv
+checkVariables
+dumpDb
