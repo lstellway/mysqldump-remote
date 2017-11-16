@@ -20,6 +20,8 @@ Bash utility for executing a `mysqldump` on a remote host with options for using
     - SSH Host
   - **--ssh-key**
     - SSH Key
+  - **-c|--compress** (Default: no)
+    - Compress output file with gunzip
   - **-o|--output** (Default: current directory)
     - Directory to output saved file
   - **-e|--env**

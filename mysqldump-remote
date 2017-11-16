@@ -30,6 +30,9 @@ FILENAME=""
 # Verbose output
 VERBOSE=0
 
+# Compress output file
+COMPRESS=0
+
 # SSH Options
 SSH_USER=""
 SSH_HOST=""
@@ -57,6 +60,7 @@ Perform MySQL dump from specified host
   --ssh-host            SSH Host
   --ssh-key             SSH Key
   -o|--output           Directory to output saved file
+  -c|--compress         Compress output file with gunzip
   -e|--env              Environment variables file location (.env format)
   -f|--file-name        Output file name (disregards prefix and suffix)
   --prefix              Output file prefix
@@ -80,6 +84,7 @@ while [ "$1" != "" ]; do
     --ssh-host) SSH_HOST=$VALUE ;;
     --ssh-port) SSH_PORT=$VALUE ;;
     --ssh-key) SSH_KEY=$VALUE ;;
+    -c|--compress) COMPRESS=1 ;;
     -o|--output) OUTPUT=$VALUE ;;
     -e|--env) ENV=$VALUE ;;
     -f|--file-name) FILENAME=$VALUE ;;
@@ -169,11 +174,15 @@ dumpDb() {
     fi
 
     # Create command
-    # CMD="${CMD} \"mysqldump ${DBV} ${DBU} ${DBH} ${DBP}$(printf "%s" "\'$DBPV\'") ${MYSQL_DB} | gzip -c\" > ${OUTPUT}/${FILENAME}.sql.gz"
     CMD="${CMD} \"mysqldump ${DBV} ${DBU} ${DBH} ${DBP} ${MYSQL_DB} | gzip -c\" > ${OUTPUT}/${FILENAME}.sql.gz"
 
+    # Decompress file
+    if [[ $COMPRESS -eq 0 ]]; then
+      echo "Decompress output file..."
+      CMD="${CMD} && gunzip ${OUTPUT}/${FILENAME}.sql.gz"
+    fi
+
     # Add output
-    echo "${CMD}"
     eval $CMD
   else
     if [ $VERBOSE -gt 0 ]; then
