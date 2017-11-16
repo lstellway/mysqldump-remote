@@ -50,8 +50,13 @@ safeExit() {
 # Help Screen
 help() {
   echo -n "${scriptName} [OPTIONS] -u=UserName --mysql-host=localhost
-Perform MySQL dump from specified host
- Options:
+
+Bash utility for dumping databases from remote hosts
+
+GitHub Project:
+  https://github.com/loganstellway/mysqldump-remote
+
+Options:
   -u|--mysql-user       Database user name
   -h|--mysql-host       Database host
   -p|--mysql-password   Database password
@@ -66,7 +71,7 @@ Perform MySQL dump from specified host
   --prefix              Output file prefix
   --suffix              Output file suffix
   -h|--help             Display this help and exit
-  -v|--verbose          Verbose output
+  -v|-vv|--verbose          Verbose output
 "
 }
 
